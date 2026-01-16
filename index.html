@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Romy's Website</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+
+      #intro {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #fff;
+        color: #111;
+        z-index: 10;
+        text-align: center;
+        }
+      #intro {
+        transition: opacity 0.8s ease;
+        }
+      #intro.hidden {
+        opacity: 0;
+        pointer-events: none;
+        }
+
+      #intro h1 { font-size: clamp(28px, 4vw, 56px); margin: 0 0 12px; letter-spacing: .5px; }
+
+      #intro p { max-width: 720px; opacity: .85; margin: 0 0 18px; }
+      #intro .row { display:flex; gap: 10px; justify-content:center; flex-wrap: wrap; }
+      #intro button {
+        border: 0; padding: 12px 16px; border-radius: 14px; cursor: pointer;
+        font-weight: 700;
+      }
+
+      #hint {
+        position: fixed; left: 12px; bottom: 12px; z-index: 5; color: rgba(255,255,255,.75);
+        background: rgba(0,0,0,.35); padding: 10px 12px; border-radius: 14px;
+        font-size: 13px; border: 1px solid rgba(255,255,255,.08);
+      }
+
+      /* Music controls */
+      #player {
+        position: fixed; right: 12px; bottom: 12px; z-index: 6;
+        background: rgba(0,0,0,.45);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 16px;
+        padding: 10px 10px;
+        color: rgba(255,255,255,.9);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(6px);
+        max-width: min(520px, calc(100% - 24px));
+      }
+      #player button {
+        border: 0;
+        border-radius: 12px;
+        padding: 8px 10px;
+        cursor: pointer;
+        background: rgba(255,255,255,.12);
+        color: white;
+        font-weight: 700;
+      }
+      #trackName {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 220px;
+        font-size: 13px;
+        opacity: .9;
+      }
+      #volume {
+        width: 90px;
+      }
+
+      /* Story modal */
+      #modalBackdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.72);
+        display: none; z-index: 20;
+      }
+      #modal {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+        width: min(1200px, calc(100% - 12px));
+        height: min(900px, calc(100% - 12px));
+        background: rgba(20,20,20,.96);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 20px;
+        color: white;
+        display: none; z-index: 21;
+        overflow: hidden;
+        box-shadow: 0 20px 80px rgba(0,0,0,.6);
+      }
+
+      #modalBody {
+        padding: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #meta { opacity: .8; font-size: 13px; margin: 6px 0 12px; }
+      .softBtn{
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        cursor: pointer;
+        background: rgba(255,255,255,.12);
+        color: white;
+        font-weight: 700;
+      }
+
+      #viewer{
+        flex: 1;
+        background: #000;
+        overflow: hidden;
+        border: none;
+        border-radius: 0;
+      }
+
+
+      #viewerImg{
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+
+      #viewerCaption{
+        padding: 14px 18px;
+        background: rgba(0,0,0,.85);
+        color: rgba(255,255,255,.9);
+        font-size: clamp(14px, 2vw, 18px);
+        line-height: 1.5;
+        border-top: 1px solid rgba(255,255,255,.10);
+      }
+      #returnBar{
+        padding: 10px 14px;
+        background: rgba(0,0,0,.65);
+        border-top: 1px solid rgba(255,255,255,.08);
+        display: flex;
+        justify-content: flex-end;
+      }
+
+
+      /* Fade animation */
+      .fade{
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+        filter: blur(12px);
+        transition:
+            opacity 1200ms ease,
+            transform 1200ms cubic-bezier(0.16, 1, 0.3, 1),
+            filter 1200ms ease;
+      }
+      .fade.show{
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <!-- Intro -->
+    <div id="intro">
+      <div>
+        <h1>The happiest year of my life</h1>
+        <p>We have been together for one year, click on the dots to relive our best moments</p>
+        <div class="row">
+          <button id="startBtn">Enter</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Player UI -->
+    <div id="player" aria-label="Music player">
+      <button id="prevBtn" title="Previous track">⟨⟨</button>
+      <button id="playPauseBtn" title="Play/Pause">Play</button>
+      <button id="nextBtn" title="Next track">⟩⟩</button>
+      <button id="fullscreenBtn" title="Fullscreen">⛶</button>
+      <div id="trackName">—</div>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volume" />
+    </div>
+
+   <!-- Modal -->
+  <div id="modalBackdrop"></div>
+  <div id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="modalBody">
+
+      <div id="viewer" class="fade">
+        <img id="viewerImg" alt="" />
+      </div>
+
+      <div id="viewerCaption"></div>
+
+      <div id="returnBar">
+        <button id="returnBtn" class="softBtn">Return</button>
+      </div>
+
+    </div>
+  </div>
+
+
+    <!-- A-Frame -->
+    <a-scene embedded vr-mode-ui="enabled: false" renderer="colorManagement: true">
+      <a-assets>
+        <img id="pano" src="assets/pano.jpg" />
+      </a-assets>
+
+      <a-entity id="rig">
+        <a-camera position="0 1.6 0" look-controls wasd-controls-enabled="false">
+          <a-cursor
+            visible="false"
+            raycaster="objects: .hotspot"
+            cursor="rayOrigin: mouse"
+            fuse="false">
+          </a-cursor>
+        </a-camera>
+      </a-entity>
+
+<a-sky id="sky"
+       rotation="0 -90 0"
+       material="color: #fff; shader: flat; side: back; transparent: true; opacity: 1">
+</a-sky>
+
+
+      <a-entity id="hotspots"></a-entity>
+    </a-scene>
+
+    <script>
+      // =========================
+      // 1) YOUR STORY STEPS HERE
+      // =========================
+      const CAPTIONS = [
+        "The Campus 1 gym ... It's so funny that us of all people met at the gym, and not just any gym. I was such an idiot, calling for you to come down when you entered up on the ledge, without even knowing anything about you. Then I proceeded to interrupt your workout to have a conversation I still am embarrassed about to this day about the '5th Floor olympics' and your instagram profile picture. No matter how embarrassing I was, I'm so happy I decided to talk to you on that fateful day, the best decision I've ever made in my entire life.",
+        "After having countless nights where we texted each other for hours on end, or where we fell asleep on facetime together, we had our long awaited first date. Since there was so much build up to it, it was all I thought about for the 2 months leading up to it. I had thought of a restaurant I assumed you might like, and played so many scenarios in my head so I would never run out of things to say. That first date seems so distant now, I can barely even recognize myself or us from back then. I love it whenever we bring up stupid anecdotes from this day and laugh about it after how much we've grown together.",
+        "We were so happy, we slept every night together and started to get to actually know each other. This picture is from the first night out we had together, it happened to have snowed a little that night. We initially went out with Kais, but after he left we kept bar hopping and being stupid lovebirds together. We had fun texting, but we started realizing how much fun we were going to have now that we're together.",
+        'We had so many fun days together before we were officially dating, but for some reason I always think back to this one. I was just so happy, spending my time with you, even for mundane tasks, was new to me but I was so hooked. This day was the infamous "J ai ta loc ma belle" day. You may only remember that part of it, but we studied, and grocery shopped, and walked, and ate dinner, and slept all while just being the two of us. For the first time in my life, all the boring tasks I used to skim through turned into so many laughs and good memories. With you, my everyday became so much brighter.',
+        "On this day, we officially became boyfriend and girlfriend. Something I had planned for a month in advance, and that I told to you while I thought you were sleeping (you weren't you little weasel). That night I was so nervous and it felt like our first date for me again, except this time I wasn't fully ready. I can't believe you knew the entire time. Were you nervous? Were you excited? After our dinner I tripped on my words and asked you to be my girlfriend with my hands shaking, it was something we had already talked about yet I was still so nervous, I couldn't imagine a world without you. It's been exactly a year since then now, and I can confidently say it has been the happiest year of my life.",
+        "MY VALENTINE !!! I asked you to be my valentine on an ice skating date, and now we have our own ice skates from my birthday present hehe. Now this picture is from our bowling date on the actual day, we also made some pots and paintings together in my room. I feel so lucky to be able to call you my valentine, I hope we have countless more unforgettable valentine day together.",
+        "Our first snowstorm! I loved this day, this was the day after I cut my hair. We went to the library with Heba and Sofie and had so much fun in the snow together. We looked at the submerged bikes and fences in the city center, climbed up huge snow mountains that had been formed and just had so much fun experiencing such a unique event that would only happen in Montreal. I love that this is our city, we're both not from here, but it's the place we call home together.",
+        "Our first semester was coming to an end, and so were the snowy days. This was definitely the end of an era, and it feels like our relationship actually got real from here, maybe it's because of the fact we would have our own places, or the summer we would spend together, regardless I feel like after this period of time around OAP I changed so much and so did where the relationship was heading. It definitely felt like things were more serious, like we were adults in a relationship. Idk if that's just me though, just looking at this picture feels so much farther than ones from the summer for example.",
+        "Goodbye Campus 1 !! I actually really loved helping you move, I felt like the man of the situation haha. Even though I don't have the best opinion of it, I am forever grateful to Campus 1 for all the people I met there, especially you. I think in the future telling other people that we met there will always be funny for us, it will always be with us in a way.",
+        "We both took summer classes and were left all alone in Montreal for a month ! You took one since you did a semester less than everybody, and I had to cause I failed a com class. I lived at yours for a month and even though people think that kind of stuff is scary or risky for early relationships, we had a blast! We made recipes together, like our carbonara, we went out to grab cocktails and played cards, or played badminton in the practically abandonned Mcgill campus, you did my makeup and randomly gave yourself beautiful bangs one day. It was such a fun time, it went by so fast, and before I knew it we had a tearful goodbye at the airport. For the first time since our relationship started we were seperated.",
+        'Our separation did not last too long luckily. My baby dropped down in Paris!! I picked you up late in the afternoon at the airport with a bouquet and a huge sign welcoming you here, to make you feel embarrassed of course :). We took the train together to get into the city of love and you rested up in my bed from the long flight. I made you dinner and our wonderful 2 week stretch in France would start. I started my tour by  showing you "My park", hehe you hateddd how much I mentionned it and gave it praise but I think you still loved it too. Seeing you in the apartment and the park that I grew up in felt so crazy, I had never really shared it with anyone else, it kind of felt like I was showing you the real me.',
+        "I taught you how to stand on the back of the paris bikes. It made me so happy you couldn't even understand, biking in Paris was my favorite thing to do in the city, by myself or with friends. I thought you might be scared of hopping on the back and trusting me with the crowded streets of Paris, but you hopped on like a pro! Having you wrap your hands around me as I biked in the sun with a breeze was like a dream come true. It allowed us to move around the city super quickly and allowed us to visit the entire city. I had to add this in here because of how important it is to me.",
+        "This dinner is a moment I daydream about so often. Everything was perfect, you had just landed the day before and I had showed you le Marée in the day, we went back to the apartment to get ready for the night. You wore your beautiful new polka dot skirt and I wore my favorite button up, we stopped by at a carefour to buy some wine, baguette, prosciutto, ham, cheese and crackers. We biked over to where my high school was and sat down on the Seine to have our dinner date. It was just such a magical moment, we kept on laughing and got wine drunk together. My dream night.",
+        "We went to Rojo so many times, also after our Seine dinner, but I loved this bar, you loved it even more. We had amazing conversations, even better cocktails, even better laughs. Like when I was flicking you up while waiting in line in front of everyone. Or when you put out a fire in my hair when my hair went into one of those cool candles on the table. I think this picture was right before that actually, moments before disaster.",
+        "You met my parents after they returned from a trip. I knew they would love you but I didn't think they would be so obsessed with you, the apple really doesn't fall far from the tree I guess. You made such a good impression on them I was so proud of you, I really felt so proud showing you off to them. Your french was so impressive my parents were amazed and so happy that I brought home a french girl like you. We even went on a boat ride through the whole seine, as well as a Paris rooftop appérot the 4 of us where Emily in Paris was filmed! After the rooftop appérot, we left them to go eat some mousse au chocolat in a huge bowl just like you did as a kid, and went to the Eiffel Tower to watch it sparkle while laying down in the grass fields.",
+        "We roadtripped with my parents to go to a beautiful french castle wedding together. My childhood bestfriend was there since his mom was the one getting married, so we talked to him and his girlfriend, as well as other people here and there. However, we would split off and go explore and have fun around the garden together. It was such a fun little night where we enjoyed amazing food, slept in a castle, drank fine alcohol and had a blast together. We left in the morning to catch a train together!",
+        "I'm dedicating this memory not to our train rides, but to us travelling in general. We had never travelled together, but being in a train with you and being alone in a city we know nothing about was so amazing. We also learned we explored and travelled in the same way, with the same curiosity and ease. I am so excited to travel like we did in the summer in the future. I love that we are such a team hehe !!!",
+        "I fell in love with Dijon. I honestly didn't expect much, but it was so charming and lively. We stayed in the old city centre, and walked for hours on end around the city. Every street was narrow and beautiful, with super cool old architecture, and there were so many open air restaurants. The city was surprisingly full of life, so many people were outside in restaurants grabbing drinks with their friends. We drank cocktails, ate good food, shared so many laughs and took so many pictures like the tourists we were.",
+        "Beaune was the cutest village ever. Unlike Dijon, the streets were quiet, but that went with it's cute and small village charm it had. We visited beautiful old monuments, bought things on cute weekend markets, tasted different wines at outside restaurants, had fun at a park, played pool, did so many things in such a short span of time. We were in such a flow state together, I think we walked through every single street there was. We took the train to go back to Paris together at night, I loved our weekend adventure so much Romy.",
+        "The last couple of days went by so fast, and before I knew it you were leaving the next day. So on our last day together we had one last dinner on the Seine and went to the attractions in the Jardins de Tuileries. We relunctantly bought tickets for a spinning platform attraction that seemed slow and boring from below and from the lack of screams we heard. However, as soon as we went on it shit got crazy!! Shoes and bags were flying everywhere, I nearly dropped your phone, and as everyone was screaming around us we were both laughing so much. It was one of the best moments of my life, you even got emotional about it, I was so moved. We did some scary ass bumper cars and people watching after that, to wrap up our summer together. I had the best summer of my life with you.",
+        "We were back in our city, hanging out with our friends we hadn't seen since before summer break. Our first date was such a good one, we walked around the plateau and got bagels from the iconic Montreal bagel spot. We then walked over to a park and ate bagels while drawing our surroundings together, it's a shame we haven't done that since because of how fun it was. I think you're so artsy and cool, so I've been trying to be more like you in that way.",
+        "This semester we started playing DND, with this insane squad ^^^. It was a bunch of fun for me, being able to do nerdy stuff with you is the best, even though I know you never clicked with the campaign we had. Just being with you rolling d20s together was enough for me, I love how open minded you are and I feel like we could do anything together and just have the best time.",
+        "On a super beautiful sunday, our first date after giving each other a bit of space, we went out biking in the plateau together. We bought a delicious chimney cake, something you had told me about a while back because you said you had some in Prague that were amazing. And it did not disappoint, we ate it in this beautiful park, and took so many pics. Eating amazing food is one of my favorite activities to do with you, we enter such a flow state whenever we do.",
+        "This semester you got really close to all the Drolet girls and hosted so many themed parties there. I have so many good memories of accompanying you there through the Saint Louis Park, dropping you off with your friends. I know you don't like hearing this, but seeing you get so close to them has made me so happy. I was scared when you got to Montreal that it would be hard to find super close friends since you missed the first semester, but seeing you get closer then I was with my girl friends made me so happy you don't even understand.",
+        "I love how we party together and how our relationship has been for the past year. We both hang out with all friends a lot, and don't abandon our social life for each other, even when we're both there with them. But we still dance and have fun romantic moments like up here when we flirted in BDA hehe. It feels like we're such a team, you're more than just my girlfriend, you're my best friend and my partner in crime.",
+        "I met your auntie (and Ruthie)!! We went to go eat raclette together. I was nervous as hell, but after the impression you made on my parents, I had to lock in too. You tell me she really likes me and said that I looked like a model :). I loved meeting your aunt, and it was honestly an honour to get to meet your favourite person and I loved her too, they were both so funny.",
+        "We were separated for the holidays, but we tried to do the most we could in the season. I learned how important Christmas is for you, and you introduced to some of the magic that I had lost over a decade ago. We constructed a nice puzzle together, you helped me through doing my first gingerbread house, and we bought presents for each other over the break too. I'm super excited for a couple years down the line, where we celebrate the holiday season together, and eventually pass on the Christmas magic to our kids.",
+        "Our third semester is starting!! It started the best way possible with our day trip to Quebec. We had so much fun together, and since it was on a Wednesday we had the city to outselves. We walked on all the cutest streets, had some Quebec food and amazing french food. We sledded next to the beautiful castle, warmed up our hands and feet in the fire we claimed in the middle of the cutest street. It is only the start of what is going to be our best semester together. These were some of my favorite moments from the past year, I hope you like your website. I love you and know this next year is only going to be even better then this first one we've shared.",
+      ];
+      const COUNT = 28;
+      const RADIUS = 8.0;
+      const DOT_Y = 0.8;
+
+      const STORY = Array.from({ length: COUNT }, (_, i) => {
+        const n = i + 1;
+        const angle = (Math.PI * 2 * i) / COUNT;
+        const x = RADIUS * Math.sin(angle);
+        const z = -RADIUS * Math.cos(angle);
+
+        return {
+          id: `m${String(n).padStart(2, "0")}`,
+          order: n,
+          position: { x, y: DOT_Y, z },
+          pano: `assets/panos/${String(n).padStart(2, "0")}.jpg`,
+          media: {
+            src: `assets/photos/${String(n).padStart(2, "0")}.jpg`,
+            caption: CAPTIONS[i] || ""
+          }
+        };
+      });
+
+
+
+      // =========================
+      // 2) YOUR PLAYLIST HERE
+      // =========================
+      const PLAYLIST = [
+        { title: "Our song", src: "assets/songs/01.mp3" },
+        { title: "My airplane song", src: "assets/songs/02.mp3" },
+        { title: "Your recommendation", src: "assets/songs/03.mp3" },
+        { title: "Romy's face", src: "assets/songs/04.mp3" }
+      ];
+
+      // =========================
+      // Hotspots
+      // =========================
+      AFRAME.registerComponent("hotspot", {
+        schema: { stepId: { type: "string" } },
+        init: function () {
+          const el = this.el;
+
+          el.addEventListener("mouseenter", () => el.setAttribute("scale", "1.25 1.25 1.25"));
+          el.addEventListener("mouseleave", () => el.setAttribute("scale", "1 1 1"));
+          el.addEventListener("click", () => openStory(this.data.stepId));
+        }
+      });
+      AFRAME.registerComponent("billboard", {
+        tick: function () {
+          const cam = document.querySelector("[camera]").object3D;
+          this.el.object3D.lookAt(cam.position);
+        }
+      });
+
+
+      const hotspotsRoot = document.getElementById("hotspots");
+      function createHotspot(step) {
+  const container = document.createElement("a-entity");
+  container.setAttribute("position", `${step.position.x} ${step.position.y} ${step.position.z}`);
+
+  // Rainbow color based on order (1..34)
+  const hue = ((step.order - 1) / 34) * 360; // 0..360
+  const dotColor = `hsl(${hue}, 90%, 60%)`;
+
+  // CLICKABLE SPHERE (dot)
+  const sphere = document.createElement("a-sphere");
+  sphere.setAttribute("radius", "0.14");
+  sphere.setAttribute("class", "hotspot");
+  sphere.setAttribute("hotspot", `stepId: ${step.id}`);
+  sphere.setAttribute(
+    "material",
+    `shader: standard; color: ${dotColor}; emissive: ${dotColor}; emissiveIntensity: 1.7`
+  );
+
+  // Optional halo ring (slightly white, subtle)
+  const ring = document.createElement("a-ring");
+  ring.setAttribute("rotation", "90 0 0");
+  ring.setAttribute("radius-inner", "0.18");
+  ring.setAttribute("radius-outer", "0.23");
+  ring.setAttribute("material", "shader: flat; color: #ffffff; opacity: 0.35");
+
+
+  container.appendChild(sphere);
+  container.appendChild(ring);
+
+  return container;
+}
+
+
+
+      STORY.forEach(step => hotspotsRoot.appendChild(createHotspot(step)));
+
+      // =========================
+      // Modal
+      // =========================
+      const modal = document.getElementById("modal");
+      const backdrop = document.getElementById("modalBackdrop");
+      const viewer = document.getElementById("viewer");
+      const viewerImg = document.getElementById("viewerImg");
+      const viewerCaption = document.getElementById("viewerCaption");
+      const returnBtn = document.getElementById("returnBtn");  
+      const sky = document.getElementById("sky");
+      let lastOpenedStep = null;
+      function openStory(stepId) {
+        lastOpenedStep = STORY.find(s => s.id === stepId);
+        if (!lastOpenedStep) return;
+
+
+
+        // Set content (image + caption)
+        viewerImg.src = lastOpenedStep.media?.src || "";
+        viewerImg.alt = lastOpenedStep.title;
+        viewerCaption.textContent = lastOpenedStep.media?.caption || "";
+
+        // Reset + trigger fade
+        viewer.classList.remove("show");
+        // next paint
+        requestAnimationFrame(() => viewer.classList.add("show"));
+
+        // Show modal
+        backdrop.style.display = "block";
+        modal.style.display = "block";
+        modal.setAttribute("aria-hidden", "false");
+      }
+     function setSkyToPano(panoUrl) {
+  if (!panoUrl) return;
+
+  // Remove old animation and reset material completely
+  sky.removeAttribute("animation__fadein");
+  sky.removeAttribute("material");
+  
+  // Force A-Frame to flush the old material
+  sky.setAttribute("material", {
+    shader: "flat",
+    color: "#fff",
+    side: "back"
+  });
+
+  // Preload new image then apply
+  const img = new Image();
+  img.onload = () => {
+    sky.setAttribute("material", {
+      shader: "flat",
+      src: panoUrl,
+      color: "#fff",
+      side: "back",
+      transparent: true,
+      opacity: 0
+    });
+    
+    setTimeout(() => {
+      sky.setAttribute(
+        "animation__fadein",
+        "property: material.opacity; from: 0; to: 1; dur: 650; easing: easeInOutQuad"
+      );
+    }, 50);
+  };
+  img.src = panoUrl;
+}
+
+
+      function closeModal() {
+        backdrop.style.display = "none";
+        modal.style.display = "none";
+        modal.setAttribute("aria-hidden", "true");
+      }
+      returnBtn.addEventListener("click", () => {
+        closeModal();
+        if (lastOpenedStep?.pano) setSkyToPano(lastOpenedStep.pano);
+      });
+      backdrop.addEventListener("click", closeModal);
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+      // =========================
+      // Music player (playlist)
+      // =========================
+      const audio = new Audio();
+      audio.loop = false;
+
+      let trackIndex = 0;
+
+      const trackName = document.getElementById("trackName");
+      const playPauseBtn = document.getElementById("playPauseBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const volume = document.getElementById("volume");
+
+      function loadTrack(i) {
+        trackIndex = (i + PLAYLIST.length) % PLAYLIST.length;
+        const t = PLAYLIST[trackIndex];
+        audio.src = t.src;
+        trackName.textContent = t.title;
+      }
+
+      async function play() {
+        try {
+          await audio.play();
+          playPauseBtn.textContent = "Pause";
+        } catch (err) {
+          // On iOS, this fails unless triggered by a user gesture.
+          // You’ll be fine after tapping Enter/Play.
+          console.log("Play blocked until user gesture:", err);
+        }
+      }
+
+      function pause() {
+        audio.pause();
+        playPauseBtn.textContent = "Play";
+      }
+
+      function togglePlay() {
+        if (audio.paused) play();
+        else pause();
+      }
+
+      function next() {
+        loadTrack(trackIndex + 1);
+        play();
+      }
+
+      function prev() {
+        loadTrack(trackIndex - 1);
+        play();
+      }
+
+      volume.addEventListener("input", () => {
+        audio.volume = Number(volume.value);
+      });
+
+      playPauseBtn.addEventListener("click", togglePlay);
+      nextBtn.addEventListener("click", next);
+      prevBtn.addEventListener("click", prev);
+
+      audio.addEventListener("ended", () => {
+        // auto-advance when a song ends
+        next();
+      });
+
+      // Initialize
+      audio.volume = Number(volume.value);
+      loadTrack(0);
+
+      // =========================
+      // Intro: Enter + Skip
+      // =========================
+      const intro = document.getElementById("intro");
+document.getElementById("startBtn").addEventListener("click", async () => {
+  // Fade out intro
+  intro.classList.add("hidden");
+  setTimeout(() => {
+    intro.style.display = "none";
+  }, 800);
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  const scene = document.querySelector("a-scene");
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+  // 🔊 START MUSIC HERE (this is the key)
+  try {
+    await audio.play();
+    playPauseBtn.textContent = "Pause";
+  } catch (err) {
+    console.log("Autoplay blocked until user gesture:", err);
+  }
+});
+    </script>
+  </body>
+</html>
